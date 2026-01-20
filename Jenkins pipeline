@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git 'https://github.com/chetansatya-platform/one.git'
+            }
+        }
+
+        stage('Build WAR') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t chetansatya/repo:image1 .'
+            }
+        }
+
+        stage('Push Image to Docker Hub') {
+            steps {
+                withDockerRegistry(
+                    credentialsId: 'hub',
+                    url: 'https://index.docker.io/v1/'
+                ) {
+                    sh 'docker push chetansatya/repo:image1'
+                }
+            }
+        }
+
+        stage('Run Container') {
+            steps {
+                sh '''
+                docker rm -f container1 || true
+                docker run -d --name container1 -p 8082:8080 chetansatya/repo:image1
+                '''
+            }
+        }
+    }
+}
