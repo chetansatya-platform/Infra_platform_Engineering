@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  app:
+    image: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - appdata:/usr/share/nginx/html
+  app2:
+    image: nginx
+    ports:
+      - "8081:80"
+    volumes:
+     - appdata1:/usr/share/nginx/html
+  
+
+volumes:
+  appdata:
+  appdata1:
