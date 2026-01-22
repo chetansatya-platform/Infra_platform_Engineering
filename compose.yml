@@ -4,12 +4,17 @@ services:
     image: nginx
     ports:
       - "8080:80"
+    deploy:
+      replicas: 5
     volumes:
       - appdata:/usr/share/nginx/html
+      
   app2:
     image: nginx
     ports:
       - "8081:80"
+    deploy:
+      replicas: 5
     volumes:
      - appdata1:/usr/share/nginx/html
   
