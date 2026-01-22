@@ -1,0 +1,69 @@
+pipeline {
+    agent any
+    tools{
+        jdk 'java'
+        nodejs 'nodejs'
+    }
+    environment {
+        SCANNER_HOME = tool 'mysonar'
+    }
+    stages {
+        stage('clean WS') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage('code'){
+            steps{
+                git "https://github.com/devops0014/Zomato-Project.git"
+            }
+        }
+        stage('CQA'){
+            steps{
+               withSonarQubeEnv('mysonar') {
+                   sh """$SCANNER_HOME/bin/sonar-scanner \
+                   -Dsonar.projectName=zomato \
+                   -Dsonar.projectKey=zomato
+                   """
+                }
+            }
+        }
+        stage('build'){
+            steps{
+                sh 'npm install'
+            }
+        }
+        stage('OWASP'){
+            steps{
+                dependencyCheck additionalArguments: '-scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'dp-check'
+                dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+            }
+        }
+        stage('image build'){
+            steps{
+                sh 'docker build -t chetansatya/myrepo:project .'
+            }
+        }
+        stage('trivy image scan'){
+            steps{
+                sh 'trivy fs . > trivyfs.txt'
+                sh 'trivy image chetansatya/myrepo:project'
+            }
+        }
+        stage('image push'){
+            steps{
+                script{
+                    withDockerRegistry(credentialsId: 'dockerhub') {
+                    sh 'docker push chetansatya/myrepo:project'
+                    }
+                }
+                
+            }
+        }
+        stage('container'){
+            steps{
+                sh 'docker service create --name zomato --publish 3000:3000 --replicas 3 chetansatya/myrepo:project'
+            }
+        }
+    }
+}
