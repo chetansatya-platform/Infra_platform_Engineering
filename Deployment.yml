@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swiggy-app
+  namespace: default
+  labels:
+    app: swiggy
+    tier: backend
+spec:
+  replicas: 3
+
+  revisionHistoryLimit: 5
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  selector:
+    matchLabels:
+      app: swiggy
+
+  template:
+    metadata:
+      labels:
+        app: swiggy
+        tier: backend
+
+    spec:
+      terminationGracePeriodSeconds: 30
+
+      nodeSelector:
+        node.kubernetes.io/instance-type: t3.small
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: swiggy
+              topologyKey: kubernetes.io/hostname
+
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "app"
+        effect: "NoSchedule"
+
+      containers:
+      - name: swiggy
+        image: chetansatya/myrepo:project
+        imagePullPolicy: IfNotPresent
+
+        ports:
+        - containerPort: 3000
+          name: http
+
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 3
+
+        env:
+        - name: ENV
+          value: "production"
+
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: swiggy-config
+              key: db_host
+
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: swiggy-secrets
+              key: db_password
